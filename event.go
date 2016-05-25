@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/golang/glog"
 	"github.com/google/go-github/github"
 	"github.com/phayes/hookserve/hookserve"
-	"github.com/golang/glog"
 	"golang.org/x/oauth2"
 	"io"
 	"os"
@@ -49,7 +49,7 @@ func (e *Event) Run() (string, error) {
 	if e.Status != StatusRunning {
 		panic("Event should have it status set to `running` before calling Run()")
 	}
-    glog.Info("Run event " + e.FullURL())
+	glog.Info("Run event " + e.FullURL())
 	// Clean the scratch space
 	err := os.RemoveAll(Config.TempDir + "/deadci/" + e.Path())
 	if err != nil {
@@ -63,7 +63,7 @@ func (e *Event) Run() (string, error) {
 	}
 
 	// Clone repo
-	glog.Info("Cloning repositories."+e.Owner+"/"+e.Repo)
+	glog.Info("Cloning repositories." + e.Owner + "/" + e.Repo)
 	cmdClone := exec.Command("git", "clone", "git@"+e.Domain+":"+e.Owner+"/"+e.Repo+".git")
 	if Config.HttpsClone == true {
 		cmdClone = exec.Command("git", "clone", "https://"+e.Domain+"/"+e.Owner+"/"+e.Repo+".git")
@@ -77,7 +77,16 @@ func (e *Event) Run() (string, error) {
 	}
 
 	// Check out correct commit
-	cmdCheckout := exec.Command("git", "checkout", "-q", e.Commit)
+	//cmdCheckout := exec.Command("git", "checkout", "-q", e.Commit)
+	cmdCheckoutBranch := exec.Command("git", "checkout", "-q", e.Branch)
+	cmdCheckoutBranch.Dir = Config.TempDir + "/deadci/" + e.Path() + "/" + e.Repo
+	cmdCheckoutBranchOut, err := cmdCheckoutBranch.CombinedOutput()
+	glog.Info(cmdCheckoutBranch.CombinedOutput())
+	e.Log = append(e.Log, cmdCheckoutBranchOut...)
+	if err != nil {
+		return StatusFailedBoot, err
+	}
+	cmdCheckout := exec.Command("git", "reset", "-q", "--hard", e.Commit)
 	cmdCheckout.Dir = Config.TempDir + "/deadci/" + e.Path() + "/" + e.Repo
 	cmdCheckoutOut, err := cmdCheckout.CombinedOutput()
 	glog.Info(cmdCheckout.CombinedOutput())
@@ -108,7 +117,7 @@ func (e *Event) Run() (string, error) {
 		cmd.Env = append(
 			cmd.Env,
 			"DEADCI_BASEOWNER="+e.BaseOwner,
-			"DEADCI_BASEREPO="+e.BaseRepo,
+			"DEADCI_BASE REPO="+e.BaseRepo,
 			"DEADCI_BASEBRANCH="+e.BaseBranch,
 		)
 	}
